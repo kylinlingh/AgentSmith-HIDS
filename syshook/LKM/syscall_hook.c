@@ -44,7 +44,6 @@
 #include <linux/namei.h>
 #include <net/inet_sock.h>
 #include <net/tcp.h>
-#include <net/tcp.h>
 #include <net/inet_connection_sock.h>
 
 #define NETLINK_USER 31
@@ -180,6 +179,7 @@ static struct device *device;
 static int major;
 static char *sh_mem = NULL;
 static DEFINE_MUTEX(mchar_mutex);
+int checkCPUendianRes = 0;
 
 static rwlock_t _write_index_lock;
 static rwlock_t _write_use_count_lock;
@@ -363,7 +363,7 @@ int checkCPUendian(void)
 
 unsigned short int Ntohs(unsigned short int n)
 {
-    return checkCPUendian() ? n : BigLittleSwap16(n);
+    return checkCPUendianRes ? n : BigLittleSwap16(n);
 }
 
 static void get_start_time(ktime_t *start)
@@ -2364,6 +2364,7 @@ static int check_syn_send_recv(void)
 static int lkm_init(void)
 {
     int i = 0;
+	checkCPUendianRes = checkCPUendian();
 
     if (LINUX_VERSION_CODE != KERNEL_VERSION(3, 10, 0) && LINUX_VERSION_CODE != KERNEL_VERSION(2, 6, 32)) {
         pr_err("KERNEL_VERSION_DON'T_SUPPORT\n");
@@ -2450,13 +2451,11 @@ static int lkm_init(void)
 
     if(!tmp_getname) {
             pr_err("UNKNOW_SYMBOL: getname()\n");
-            return -1;
     }
     tmp_putname = (void *)kallsyms_lookup_name("putname");
 
     if(!tmp_putname) {
             pr_err("UNKNOW_SYMBOL: putname()\n");
-            return -1;
     }
 
     if(!tmp_putname || !tmp_getname) {
@@ -2464,6 +2463,7 @@ static int lkm_init(void)
         device_destroy(class, MKDEV(major, 0));
         class_destroy(class);
         unregister_chrdev(major, DEVICE_NAME);
+        return -1;
     }
 #endif
 
